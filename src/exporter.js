@@ -1,6 +1,13 @@
 import yaml from 'js-yaml';
 
 export function initExporter(data) {
+  // Auto-save settings
+  const autoSaveSettings = {
+    enabled: false,
+    interval: 30000, // 30 seconds
+    intervalId: null
+  };
+  
   // Add export buttons to the page
   const exportContainer = document.createElement('div');
   exportContainer.style.cssText = `
@@ -12,6 +19,26 @@ export function initExporter(data) {
     flex-direction: column;
     gap: 10px;
   `;
+  
+  // File input for import
+  const fileInput = document.createElement('input');
+  fileInput.type = 'file';
+  fileInput.accept = '.yaml,.yml,.json';
+  fileInput.style.display = 'none';
+  fileInput.addEventListener('change', (e) => handleFileImport(e, data));
+  
+  const importBtn = document.createElement('button');
+  importBtn.textContent = 'Import File';
+  importBtn.style.cssText = `
+    padding: 10px 15px;
+    background: #2ecc71;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+  `;
+  importBtn.addEventListener('click', () => fileInput.click());
   
   const exportYamlBtn = document.createElement('button');
   exportYamlBtn.textContent = 'Export YAML';
@@ -37,8 +64,22 @@ export function initExporter(data) {
     font-size: 14px;
   `;
   
+  const autoSaveBtn = document.createElement('button');
+  autoSaveBtn.textContent = 'Auto-Save: OFF';
+  autoSaveBtn.style.cssText = `
+    padding: 10px 15px;
+    background: #95a5a6;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+  `;
+  
+  importBtn.addEventListener('click', () => fileInput.click());
   exportYamlBtn.addEventListener('click', () => exportToYaml(data));
   exportJsonBtn.addEventListener('click', () => exportToJson(data));
+  autoSaveBtn.addEventListener('click', () => toggleAutoSave(autoSaveSettings, autoSaveBtn, data));
   
   // Help button
   const helpBtn = document.createElement('button');
@@ -55,8 +96,11 @@ export function initExporter(data) {
   
   helpBtn.addEventListener('click', showHelp);
   
+  document.body.appendChild(fileInput);
+  exportContainer.appendChild(importBtn);
   exportContainer.appendChild(exportYamlBtn);
   exportContainer.appendChild(exportJsonBtn);
+  exportContainer.appendChild(autoSaveBtn);
   exportContainer.appendChild(helpBtn);
   document.body.appendChild(exportContainer);
   
@@ -214,4 +258,110 @@ function showHelp() {
       document.removeEventListener('keydown', escapeHandler);
     }
   });
+}
+
+// File import functionality
+function handleFileImport(event, data) {
+  const file = event.target.files[0];
+  if (!file) return;
+  
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      let importedData;
+      const content = e.target.result;
+      
+      if (file.name.endsWith('.json')) {
+        importedData = JSON.parse(content);
+      } else if (file.name.endsWith('.yaml') || file.name.endsWith('.yml')) {
+        importedData = yaml.load(content);
+      } else {
+        alert('Unsupported file type. Please use .yaml, .yml, or .json files.');
+        return;
+      }
+      
+      // Validate and merge data
+      if (importedData.nodes) {
+        data.nodes.length = 0;
+        data.nodes.push(...importedData.nodes);
+      }
+      if (importedData.connections) {
+        data.connections.length = 0;
+        data.connections.push(...importedData.connections);
+      }
+      if (importedData.groups) {
+        data.groups.length = 0;
+        data.groups.push(...importedData.groups);
+      }
+      
+      console.log('Imported data:', importedData);
+      alert(`Successfully imported ${file.name}. Refresh page to see changes in 3D scene.`);
+      
+    } catch (error) {
+      console.error('Error importing file:', error);
+      alert('Error importing file. Please check the file format and try again.');
+    }
+  };
+  
+  reader.readAsText(file);
+  event.target.value = ''; // Reset file input
+}
+
+// Auto-save functionality
+function toggleAutoSave(settings, button, data) {
+  settings.enabled = !settings.enabled;
+  
+  if (settings.enabled) {
+    button.textContent = 'Auto-Save: ON';
+    button.style.background = '#27ae60';
+    
+    settings.intervalId = setInterval(() => {
+      autoSaveToLocalStorage(data);
+    }, settings.interval);
+    
+    console.log(`Auto-save enabled (${settings.interval/1000}s intervals)`);
+  } else {
+    button.textContent = 'Auto-Save: OFF';
+    button.style.background = '#95a5a6';
+    
+    if (settings.intervalId) {
+      clearInterval(settings.intervalId);
+      settings.intervalId = null;
+    }
+    
+    console.log('Auto-save disabled');
+  }
+}
+
+// Save to local storage
+function autoSaveToLocalStorage(data) {
+  try {
+    const saveData = {
+      timestamp: new Date().toISOString(),
+      ...data
+    };
+    localStorage.setItem('thinkingspace-autosave', JSON.stringify(saveData));
+    console.log('Auto-saved to local storage at', saveData.timestamp);
+  } catch (error) {
+    console.error('Auto-save failed:', error);
+  }
+}
+
+// Load from local storage on startup
+export function loadAutoSave() {
+  try {
+    const saved = localStorage.getItem('thinkingspace-autosave');
+    if (saved) {
+      const data = JSON.parse(saved);
+      console.log('Found auto-save data from:', data.timestamp);
+      return {
+        nodes: data.nodes || [],
+        connections: data.connections || [],
+        groups: data.groups || []
+      };
+    }
+  } catch (error) {
+    console.error('Failed to load auto-save:', error);
+  }
+  return null;
 }

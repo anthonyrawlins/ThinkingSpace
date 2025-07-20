@@ -88,10 +88,43 @@ data/
 - **Delete/Backspace**: Remove selected objects
 - **Tab**: Toggle grid snapping on/off
 
-## 🔄 Next Steps (Phase 3)
+## 🚀 Phase 3: Bi-directional YAML/JSON Editing - COMPLETE ✅
 
-- [ ] Bi-directional YAML/JSON editing
-- [ ] Live file watching and auto-reload
+### New Features Added:
+- ✅ **File Import System**: Load YAML/JSON files to replace current scene data
+- ✅ **Auto-Save Functionality**: Configurable local storage persistence (30s intervals)
+- ✅ **Auto-Save Recovery**: Prompt to restore work from local storage on startup
+- ✅ **Connection Selection & Deletion**: Click connections to select/delete them
+- ✅ **Visual Grid Display**: Toggle-able grid helper for spatial reference
+- ✅ **Enhanced Data Management**: Real-time sync between 3D scene and data model
+
+### 💾 File Management:
+
+**Import:**
+- **Import File** button: Load .yaml, .yml, or .json architecture files
+- Automatic data validation and scene refresh prompt
+- Supports both ThinkingSpace exports and custom architecture files
+
+**Export Enhanced:**
+- **Export YAML/JSON**: Download current scene state with timestamp
+- **Auto-Save Toggle**: Persistent local storage backup every 30 seconds
+- **Recovery System**: Automatic prompt to restore unsaved work
+
+**Auto-Save Recovery:**
+- Detects previous sessions with unsaved changes
+- User prompt to restore or start fresh
+- Timestamped save data with full scene state
+
+### 🔗 Connection Management:
+- **Click connections** to select (turns green)
+- **Delete key** removes selected connections
+- **Node deletion** automatically removes dependent connections
+- Visual feedback for all connection states
+
+## 🔄 Advanced Features (Optional)
+
+- [ ] Undo/redo system for complex workflows
+- [ ] Connection label inline editing
+- [ ] Live file watching for external changes
 - [ ] Advanced group editing with resize handles
-- [ ] Connection label editing
-- [ ] Undo/redo system
+- [ ] Multi-selection support

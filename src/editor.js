@@ -53,6 +53,10 @@ export function enableEditor(sceneData, data) {
       
       if (targetObject.userData.type === 'node') {
         handleNodeClick(targetObject, event);
+      } else if (targetObject.userData.type === 'connection') {
+        if (!connectionMode.active) {
+          selectObject(targetObject);
+        }
       } else {
         if (!connectionMode.active) {
           selectObject(targetObject);
@@ -101,6 +105,10 @@ export function enableEditor(sceneData, data) {
       // Attach transform controls
       transformControls.attach(object);
       transformControls.setMode('translate');
+    } else if (object.userData.type === 'connection') {
+      // Change connection color to indicate selection
+      object.material.color.setHex(0x00ff00);
+      object.material.needsUpdate = true;
     }
     
     console.log('Selected:', object.userData.type, object.userData.data);
@@ -113,14 +121,20 @@ export function enableEditor(sceneData, data) {
   
   function deselectObject() {
     if (selectedObject) {
-      // Remove selection outline
-      const outline = selectedObject.getObjectByName('selection-outline');
-      if (outline) {
-        selectedObject.remove(outline);
+      if (selectedObject.userData.type === 'node') {
+        // Remove selection outline
+        const outline = selectedObject.getObjectByName('selection-outline');
+        if (outline) {
+          selectedObject.remove(outline);
+        }
+        
+        // Detach transform controls
+        transformControls.detach();
+      } else if (selectedObject.userData.type === 'connection') {
+        // Restore original connection color
+        selectedObject.material.color.setHex(selectedObject.userData.data.color.replace('#', '0x'));
+        selectedObject.material.needsUpdate = true;
       }
-      
-      // Detach transform controls
-      transformControls.detach();
       
       selectedObject = null;
       
@@ -198,6 +212,26 @@ export function enableEditor(sceneData, data) {
       if (type === 'node') {
         const index = data.nodes.findIndex(node => node.id === objectData.id);
         if (index !== -1) data.nodes.splice(index, 1);
+        
+        // Also remove connections that reference this node
+        data.connections = data.connections.filter(conn => 
+          conn.from !== objectData.id && conn.to !== objectData.id
+        );
+        
+        // Remove visual connections from scene
+        sceneData.connectionGroup.children.forEach((child, i) => {
+          if (child.userData.type === 'connection') {
+            const connData = child.userData.data;
+            if (connData.from === objectData.id || connData.to === objectData.id) {
+              sceneData.connectionGroup.remove(child);
+            }
+          }
+        });
+        
+      } else if (type === 'connection') {
+        const index = data.connections.findIndex(conn => conn.id === objectData.id);
+        if (index !== -1) data.connections.splice(index, 1);
+        
       } else if (type === 'group') {
         const index = data.groups.findIndex(group => group.id === objectData.id);
         if (index !== -1) data.groups.splice(index, 1);

@@ -51,6 +51,12 @@ export function initGUI(sceneData, data, editor) {
     sceneData.connectionGroup.visible = value;
   });
   
+  sceneSettings.showGrid = true;
+  sceneFolder.add(sceneSettings, 'showGrid').onChange((value) => {
+    const grid = sceneData.scene.getObjectByName('grid-helper');
+    if (grid) grid.visible = value;
+  });
+  
   sceneFolder.addColor(sceneSettings, 'backgroundColor').onChange((value) => {
     sceneData.renderer.setClearColor(value);
   });

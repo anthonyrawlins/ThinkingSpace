@@ -1,6 +1,16 @@
 import yaml from 'js-yaml';
+import { loadAutoSave } from './exporter.js';
 
 export async function loadData() {
+  // Check for auto-save data first
+  const autoSaveData = loadAutoSave();
+  if (autoSaveData && (autoSaveData.nodes.length > 0 || autoSaveData.connections.length > 0 || autoSaveData.groups.length > 0)) {
+    const useAutoSave = confirm('Found auto-saved data. Load it instead of default data?');
+    if (useAutoSave) {
+      console.log('Loading auto-saved data');
+      return autoSaveData;
+    }
+  }
   try {
     const [nodesResponse, connectionsResponse, groupsResponse] = await Promise.all([
       fetch('/data/nodes.yaml'),

@@ -36,6 +36,11 @@ export function initScene(data) {
   // Add fog for depth perception
   scene.fog = new THREE.Fog(0x1a1a1a, 50, 200);
   
+  // Add visual grid
+  const gridHelper = new THREE.GridHelper(40, 40, 0x444444, 0x222222);
+  gridHelper.name = 'grid-helper';
+  scene.add(gridHelper);
+  
   // Create object containers
   const nodeGroup = new THREE.Group();
   const connectionGroup = new THREE.Group();
