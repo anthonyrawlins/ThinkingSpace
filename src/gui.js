@@ -189,8 +189,19 @@ function updateNodeLabel(object, newLabel) {
 }
 
 function updateNodeGeometry(object, size) {
+  // Dispose old geometry
   object.geometry.dispose();
-  object.geometry = new THREE.BoxGeometry(...size);
+  
+  // Create new geometry
+  const newGeometry = new THREE.BoxGeometry(...size);
+  object.geometry = newGeometry;
+  
+  // Update the wireframe edges
+  const wireframe = object.getObjectByName('node-edges');
+  if (wireframe) {
+    wireframe.geometry.dispose();
+    wireframe.geometry = new THREE.EdgesGeometry(newGeometry);
+  }
 }
 
 // Add new node function
@@ -208,15 +219,35 @@ function addNewNode(sceneData, data) {
   // Add to data model
   data.nodes.push(newNode);
   
-  // Create 3D object
+  // Create 3D object with transparent fill and opaque edges
   const geometry = new THREE.BoxGeometry(...newNode.size);
-  const material = new THREE.MeshLambertMaterial({ color: newNode.color });
-  const mesh = new THREE.Mesh(geometry, material);
+  
+  // Create transparent fill material
+  const fillMaterial = new THREE.MeshLambertMaterial({
+    color: newNode.color,
+    transparent: true,
+    opacity: 0.05 // 95% transparent
+  });
+  
+  // Create the main mesh with transparent fill
+  const mesh = new THREE.Mesh(geometry, fillMaterial);
   mesh.position.set(...newNode.position);
   mesh.castShadow = true;
   mesh.receiveShadow = true;
   mesh.userData = { type: 'node', data: newNode };
   
+  // Create edges/wireframe with 100% opacity
+  const edges = new THREE.EdgesGeometry(geometry);
+  const edgeMaterial = new THREE.LineBasicMaterial({
+    color: newNode.color,
+    linewidth: 2,
+    transparent: false
+  });
+  const wireframe = new THREE.LineSegments(edges, edgeMaterial);
+  wireframe.name = 'node-edges';
+  
+  // Add both fill and edges to mesh
+  mesh.add(wireframe);
   sceneData.nodeGroup.add(mesh);
   
   // Add label

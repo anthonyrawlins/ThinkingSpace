@@ -119,16 +119,33 @@ function renderNodes(nodes, nodeGroup) {
   nodes.forEach(node => {
     const [width, height, depth] = node.size;
     const geometry = new THREE.BoxGeometry(width, height, depth);
-    const material = new THREE.MeshLambertMaterial({
-      color: node.color
+    
+    // Create transparent fill material
+    const fillMaterial = new THREE.MeshLambertMaterial({
+      color: node.color,
+      transparent: true,
+      opacity: 0.05 // 95% transparent
     });
     
-    const mesh = new THREE.Mesh(geometry, material);
+    // Create the main mesh with transparent fill
+    const mesh = new THREE.Mesh(geometry, fillMaterial);
     mesh.position.set(...node.position);
     mesh.castShadow = true;
     mesh.receiveShadow = true;
-    
     mesh.userData = { type: 'node', data: node };
+    
+    // Create edges/wireframe with 100% opacity
+    const edges = new THREE.EdgesGeometry(geometry);
+    const edgeMaterial = new THREE.LineBasicMaterial({
+      color: node.color,
+      linewidth: 2,
+      transparent: false // Fully opaque borders
+    });
+    const wireframe = new THREE.LineSegments(edges, edgeMaterial);
+    wireframe.name = 'node-edges';
+    
+    // Add both fill and edges to mesh
+    mesh.add(wireframe);
     nodeGroup.add(mesh);
     
     // Add label

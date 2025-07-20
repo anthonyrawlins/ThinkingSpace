@@ -287,8 +287,19 @@ export function enableEditor(sceneData, data) {
   
   // Update node geometry (from gui.js functionality)
   function updateNodeGeometry(object, size) {
+    // Dispose old geometry
     object.geometry.dispose();
-    object.geometry = new THREE.BoxGeometry(...size);
+    
+    // Create new geometry
+    const newGeometry = new THREE.BoxGeometry(...size);
+    object.geometry = newGeometry;
+    
+    // Update the wireframe edges
+    const wireframe = object.getObjectByName('node-edges');
+    if (wireframe) {
+      wireframe.geometry.dispose();
+      wireframe.geometry = new THREE.EdgesGeometry(newGeometry);
+    }
   }
   
   // Connection mode functions
