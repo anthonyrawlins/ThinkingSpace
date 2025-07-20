@@ -6,12 +6,21 @@ export function initScene(data) {
   const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
   const renderer = new THREE.WebGLRenderer({ antialias: true });
   
-  renderer.setSize(window.innerWidth, window.innerHeight);
+  // Get scene container and set up responsive sizing
+  const sceneContainer = document.getElementById('scene-container');
+  const updateSize = () => {
+    const rect = sceneContainer.getBoundingClientRect();
+    renderer.setSize(rect.width, rect.height);
+    camera.aspect = rect.width / rect.height;
+    camera.updateProjectionMatrix();
+  };
+  
   renderer.setClearColor(0x1a1a1a);
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   
-  document.body.appendChild(renderer.domElement);
+  sceneContainer.appendChild(renderer.domElement);
+  updateSize();
   
   // Setup camera controls
   const controls = new OrbitControls(camera, renderer.domElement);
@@ -68,11 +77,7 @@ export function initScene(data) {
   animate();
   
   // Handle window resize
-  window.addEventListener('resize', () => {
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
-  });
+  window.addEventListener('resize', updateSize);
   
   return {
     scene,
