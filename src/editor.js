@@ -1,10 +1,38 @@
 import * as THREE from 'three';
+import { TransformControls } from 'three/examples/jsm/controls/TransformControls';
 
 export function enableEditor(sceneData, data) {
-  const { scene, camera, renderer } = sceneData;
+  const { scene, camera, renderer, controls } = sceneData;
   const raycaster = new THREE.Raycaster();
   const mouse = new THREE.Vector2();
   let selectedObject = null;
+  
+  // Transform controls setup
+  const transformControls = new TransformControls(camera, renderer.domElement);
+  transformControls.addEventListener('change', () => {
+    if (selectedObject && transformControls.object) {
+      updateObjectData(selectedObject, transformControls.object);
+    }
+  });
+  
+  transformControls.addEventListener('dragging-changed', (event) => {
+    controls.enabled = !event.value;
+  });
+  
+  scene.add(transformControls);
+  
+  // Grid snapping settings
+  const snapSettings = {
+    enabled: true,
+    size: 1.0
+  };
+  
+  // Connection mode state
+  const connectionMode = {
+    active: false,
+    startNode: null,
+    tempLine: null
+  };
   
   // Mouse event handlers
   function onMouseClick(event) {
@@ -23,11 +51,37 @@ export function enableEditor(sceneData, data) {
         targetObject = targetObject.parent;
       }
       
-      if (targetObject.userData.type) {
-        selectObject(targetObject);
+      if (targetObject.userData.type === 'node') {
+        handleNodeClick(targetObject, event);
+      } else {
+        if (!connectionMode.active) {
+          selectObject(targetObject);
+        }
       }
     } else {
-      deselectObject();
+      if (connectionMode.active) {
+        cancelConnectionMode();
+      } else {
+        deselectObject();
+      }
+    }
+  }
+  
+  function handleNodeClick(nodeObject, event) {
+    if (connectionMode.active) {
+      // Complete connection
+      if (connectionMode.startNode && connectionMode.startNode !== nodeObject) {
+        createConnection(connectionMode.startNode, nodeObject);
+        cancelConnectionMode();
+      } else {
+        cancelConnectionMode();
+      }
+    } else if (event.shiftKey) {
+      // Start connection mode
+      startConnectionMode(nodeObject);
+    } else {
+      // Normal selection
+      selectObject(nodeObject);
     }
   }
   
@@ -43,6 +97,10 @@ export function enableEditor(sceneData, data) {
       const outline = new THREE.LineSegments(edges, lineMaterial);
       outline.name = 'selection-outline';
       object.add(outline);
+      
+      // Attach transform controls
+      transformControls.attach(object);
+      transformControls.setMode('translate');
     }
     
     console.log('Selected:', object.userData.type, object.userData.data);
@@ -60,6 +118,10 @@ export function enableEditor(sceneData, data) {
       if (outline) {
         selectedObject.remove(outline);
       }
+      
+      // Detach transform controls
+      transformControls.detach();
+      
       selectedObject = null;
       
       // Dispatch deselection event
@@ -81,6 +143,47 @@ export function enableEditor(sceneData, data) {
         break;
       case 'Escape':
         deselectObject();
+        break;
+      case 'g':
+      case 'G':
+        if (selectedObject && transformControls.object) {
+          transformControls.setMode('translate');
+        }
+        break;
+      case 'r':
+      case 'R':
+        if (selectedObject && transformControls.object) {
+          transformControls.setMode('rotate');
+        }
+        break;
+      case 's':
+      case 'S':
+        if (selectedObject && transformControls.object) {
+          transformControls.setMode('scale');
+        }
+        break;
+      case 'x':
+      case 'X':
+        if (selectedObject && transformControls.object) {
+          transformControls.showX = !transformControls.showX;
+        }
+        break;
+      case 'y':
+      case 'Y':
+        if (selectedObject && transformControls.object) {
+          transformControls.showY = !transformControls.showY;
+        }
+        break;
+      case 'z':
+      case 'Z':
+        if (selectedObject && transformControls.object) {
+          transformControls.showZ = !transformControls.showZ;
+        }
+        break;
+      case 'Tab':
+        event.preventDefault();
+        snapSettings.enabled = !snapSettings.enabled;
+        console.log('Grid snapping:', snapSettings.enabled ? 'enabled' : 'disabled');
         break;
     }
   }
@@ -107,10 +210,178 @@ export function enableEditor(sceneData, data) {
   
   document.addEventListener('keydown', onKeyDown);
   
+  // Grid snapping function
+  function snapToGrid(value, gridSize) {
+    if (!snapSettings.enabled) return value;
+    return Math.round(value / gridSize) * gridSize;
+  }
+  
+  // Update object data when transform controls change
+  function updateObjectData(selectedObj, transformedObj) {
+    if (selectedObj.userData.type === 'node') {
+      const nodeData = selectedObj.userData.data;
+      
+      // Apply grid snapping to position
+      const newPosition = [
+        snapToGrid(transformedObj.position.x, snapSettings.size),
+        snapToGrid(transformedObj.position.y, snapSettings.size),
+        snapToGrid(transformedObj.position.z, snapSettings.size)
+      ];
+      
+      // Update data model
+      nodeData.position = newPosition;
+      
+      // Apply snapped position back to object
+      transformedObj.position.set(...newPosition);
+      
+      // Update scale if changed
+      if (transformControls.getMode() === 'scale') {
+        nodeData.size = [
+          nodeData.size[0] * transformedObj.scale.x,
+          nodeData.size[1] * transformedObj.scale.y,
+          nodeData.size[2] * transformedObj.scale.z
+        ];
+        
+        // Reset scale and update geometry
+        transformedObj.scale.set(1, 1, 1);
+        updateNodeGeometry(transformedObj, nodeData.size);
+      }
+      
+      console.log('Updated node position:', newPosition);
+    }
+  }
+  
+  // Update node geometry (from gui.js functionality)
+  function updateNodeGeometry(object, size) {
+    object.geometry.dispose();
+    object.geometry = new THREE.BoxGeometry(...size);
+  }
+  
+  // Connection mode functions
+  function startConnectionMode(startNode) {
+    connectionMode.active = true;
+    connectionMode.startNode = startNode;
+    
+    // Visual feedback for start node
+    if (startNode.userData.type === 'node') {
+      const edges = new THREE.EdgesGeometry(startNode.geometry);
+      const lineMaterial = new THREE.LineBasicMaterial({ color: 0x00ffff, linewidth: 3 });
+      const outline = new THREE.LineSegments(edges, lineMaterial);
+      outline.name = 'connection-start-outline';
+      startNode.add(outline);
+    }
+    
+    console.log('Connection mode started from:', startNode.userData.data.label);
+    
+    // Add mouse move listener for preview line
+    renderer.domElement.addEventListener('mousemove', onConnectionMouseMove);
+  }
+  
+  function cancelConnectionMode() {
+    if (connectionMode.startNode) {
+      // Remove visual feedback
+      const outline = connectionMode.startNode.getObjectByName('connection-start-outline');
+      if (outline) {
+        connectionMode.startNode.remove(outline);
+      }
+    }
+    
+    // Remove temp line
+    if (connectionMode.tempLine) {
+      scene.remove(connectionMode.tempLine);
+      connectionMode.tempLine = null;
+    }
+    
+    connectionMode.active = false;
+    connectionMode.startNode = null;
+    
+    renderer.domElement.removeEventListener('mousemove', onConnectionMouseMove);
+    console.log('Connection mode cancelled');
+  }
+  
+  function onConnectionMouseMove(event) {
+    if (!connectionMode.active || !connectionMode.startNode) return;
+    
+    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+    
+    raycaster.setFromCamera(mouse, camera);
+    
+    // Get mouse position in 3D space
+    const plane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
+    const mousePos = new THREE.Vector3();
+    raycaster.ray.intersectPlane(plane, mousePos);
+    
+    // Remove previous temp line
+    if (connectionMode.tempLine) {
+      scene.remove(connectionMode.tempLine);
+    }
+    
+    // Create temp preview line
+    const start = connectionMode.startNode.position.clone();
+    const end = mousePos;
+    
+    const midPoint = new THREE.Vector3().addVectors(start, end).multiplyScalar(0.5);
+    midPoint.y += Math.abs(end.x - start.x) * 0.3;
+    
+    const curve = new THREE.QuadraticBezierCurve3(start, midPoint, end);
+    const points = curve.getPoints(20);
+    const geometry = new THREE.BufferGeometry().setFromPoints(points);
+    
+    const material = new THREE.LineBasicMaterial({
+      color: 0x00ffff,
+      linewidth: 2,
+      transparent: true,
+      opacity: 0.6
+    });
+    
+    connectionMode.tempLine = new THREE.Line(geometry, material);
+    scene.add(connectionMode.tempLine);
+  }
+  
+  function createConnection(startNode, endNode) {
+    const connectionId = `connection-${Date.now()}`;
+    const newConnection = {
+      id: connectionId,
+      from: startNode.userData.data.id,
+      to: endNode.userData.data.id,
+      label: `${startNode.userData.data.label} → ${endNode.userData.data.label}`,
+      color: '#2ecc71'
+    };
+    
+    // Add to data model
+    data.connections.push(newConnection);
+    
+    // Create visual connection
+    const start = new THREE.Vector3(...startNode.userData.data.position);
+    const end = new THREE.Vector3(...endNode.userData.data.position);
+    
+    const midPoint = new THREE.Vector3().addVectors(start, end).multiplyScalar(0.5);
+    midPoint.y += Math.abs(end.x - start.x) * 0.3;
+    
+    const curve = new THREE.QuadraticBezierCurve3(start, midPoint, end);
+    const points = curve.getPoints(20);
+    const geometry = new THREE.BufferGeometry().setFromPoints(points);
+    
+    const material = new THREE.LineBasicMaterial({
+      color: newConnection.color,
+      linewidth: 2
+    });
+    
+    const line = new THREE.Line(geometry, material);
+    line.userData = { type: 'connection', data: newConnection };
+    sceneData.connectionGroup.add(line);
+    
+    console.log('Created connection:', newConnection.label);
+  }
+  
   return {
     getSelectedObject: () => selectedObject,
     selectObject,
     deselectObject,
-    deleteObject
+    deleteObject,
+    transformControls,
+    snapSettings,
+    connectionMode
   };
 }

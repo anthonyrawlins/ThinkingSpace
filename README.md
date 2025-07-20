@@ -60,10 +60,38 @@ data/
 └── groups.yaml      - Group/boundary definitions
 ```
 
-## 🔄 Next Steps (Phase 2)
+## 🚀 Phase 2: User Interaction Layer - COMPLETE ✅
 
-- [ ] Transform controls for moving objects
-- [ ] Grid snapping system
-- [ ] Add/delete nodes from UI
-- [ ] Drag-to-connect interface
-- [ ] Real-time data model updates
+### New Features Added:
+- ✅ **Transform Controls**: Move, rotate, and scale nodes with 3D gizmo controls
+- ✅ **Grid Snapping**: Automatic snapping to grid for precise positioning
+- ✅ **Add/Delete Nodes**: Create new nodes, connections, and groups from GUI
+- ✅ **Drag-to-Connect**: Shift+Click to start connection, click target to complete
+- ✅ **Real-time Updates**: All changes immediately update the data model
+- ✅ **Advanced Keyboard Shortcuts**: G/R/S for transform modes, Tab for snapping
+
+### 🎮 Enhanced Controls:
+
+**Transform Modes:**
+- **G**: Switch to translate/move mode
+- **R**: Switch to rotate mode  
+- **S**: Switch to scale mode
+- **X/Y/Z**: Toggle individual axis constraints
+
+**Connection Creation:**
+- **Shift+Click** node: Start connection mode (cyan outline)
+- **Click** target node: Complete connection with Bezier curve
+- **Click** empty space: Cancel connection mode
+
+**Object Creation:**
+- Use **Editor Controls** panel to add new nodes, connections, groups
+- **Delete/Backspace**: Remove selected objects
+- **Tab**: Toggle grid snapping on/off
+
+## 🔄 Next Steps (Phase 3)
+
+- [ ] Bi-directional YAML/JSON editing
+- [ ] Live file watching and auto-reload
+- [ ] Advanced group editing with resize handles
+- [ ] Connection label editing
+- [ ] Undo/redo system

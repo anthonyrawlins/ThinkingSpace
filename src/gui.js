@@ -3,6 +3,37 @@ import { GUI } from 'dat.gui';
 export function initGUI(sceneData, data, editor) {
   const gui = new GUI();
   
+  // Editor controls folder
+  const editorFolder = gui.addFolder('Editor Controls');
+  const editorSettings = {
+    transformMode: 'translate',
+    gridSnapping: true,
+    gridSize: 1.0,
+    addNode: () => addNewNode(sceneData, data),
+    addConnection: () => addNewConnection(data),
+    addGroup: () => addNewGroup(sceneData, data)
+  };
+  
+  editorFolder.add(editorSettings, 'transformMode', ['translate', 'rotate', 'scale']).onChange((mode) => {
+    if (editor.transformControls.object) {
+      editor.transformControls.setMode(mode);
+    }
+  });
+  
+  editorFolder.add(editorSettings, 'gridSnapping').onChange((value) => {
+    editor.snapSettings.enabled = value;
+  });
+  
+  editorFolder.add(editorSettings, 'gridSize', 0.1, 5.0).onChange((value) => {
+    editor.snapSettings.size = value;
+  });
+  
+  editorFolder.add(editorSettings, 'addNode').name('Add New Node');
+  editorFolder.add(editorSettings, 'addConnection').name('Add Connection');
+  editorFolder.add(editorSettings, 'addGroup').name('Add Group');
+  
+  editorFolder.open();
+  
   // Scene controls
   const sceneFolder = gui.addFolder('Scene');
   const sceneSettings = {
@@ -154,4 +185,128 @@ function updateNodeLabel(object, newLabel) {
 function updateNodeGeometry(object, size) {
   object.geometry.dispose();
   object.geometry = new THREE.BoxGeometry(...size);
+}
+
+// Add new node function
+function addNewNode(sceneData, data) {
+  const nodeId = `node-${Date.now()}`;
+  const newNode = {
+    id: nodeId,
+    label: 'New Node',
+    position: [0, 0, 0],
+    size: [2, 1, 1],
+    color: '#3498db',
+    group: 'default'
+  };
+  
+  // Add to data model
+  data.nodes.push(newNode);
+  
+  // Create 3D object
+  const geometry = new THREE.BoxGeometry(...newNode.size);
+  const material = new THREE.MeshLambertMaterial({ color: newNode.color });
+  const mesh = new THREE.Mesh(geometry, material);
+  mesh.position.set(...newNode.position);
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  mesh.userData = { type: 'node', data: newNode };
+  
+  sceneData.nodeGroup.add(mesh);
+  
+  // Add label
+  addLabel(newNode.label, mesh.position, sceneData.nodeGroup);
+  
+  console.log('Added new node:', nodeId);
+}
+
+// Add new connection function
+function addNewConnection(data) {
+  if (data.nodes.length < 2) {
+    alert('Need at least 2 nodes to create a connection');
+    return;
+  }
+  
+  const connectionId = `connection-${Date.now()}`;
+  const newConnection = {
+    id: connectionId,
+    from: data.nodes[0].id,
+    to: data.nodes[1].id,
+    label: 'New Connection',
+    color: '#2ecc71'
+  };
+  
+  data.connections.push(newConnection);
+  console.log('Added new connection:', connectionId);
+  
+  // Note: Would need to re-render connections or add incremental rendering
+  alert('Connection added to data. Refresh scene to see visualization.');
+}
+
+// Add new group function
+function addNewGroup(sceneData, data) {
+  const groupId = `group-${Date.now()}`;
+  const newGroup = {
+    id: groupId,
+    label: 'New Group',
+    bounds: {
+      min: [-2, -2, -2],
+      max: [2, 2, 2]
+    },
+    color: '#f39c12',
+    wireframe: true
+  };
+  
+  // Add to data model
+  data.groups.push(newGroup);
+  
+  // Create 3D wireframe box
+  const { min, max } = newGroup.bounds;
+  const width = max[0] - min[0];
+  const height = max[1] - min[1];
+  const depth = max[2] - min[2];
+  
+  const geometry = new THREE.BoxGeometry(width, height, depth);
+  const material = new THREE.MeshBasicMaterial({
+    color: newGroup.color,
+    wireframe: true,
+    transparent: true,
+    opacity: 0.3
+  });
+  
+  const box = new THREE.Mesh(geometry, material);
+  box.position.set(
+    min[0] + width / 2,
+    min[1] + height / 2,
+    min[2] + depth / 2
+  );
+  
+  box.userData = { type: 'group', data: newGroup };
+  sceneData.groupBoxGroup.add(box);
+  
+  // Add label
+  addLabel(newGroup.label, box.position, sceneData.groupBoxGroup, 0.8);
+  
+  console.log('Added new group:', groupId);
+}
+
+// Helper function to add label (duplicated from scene.js for convenience)
+function addLabel(text, position, parent, scale = 1) {
+  const canvas = document.createElement('canvas');
+  canvas.width = 256;
+  canvas.height = 64;
+  const context = canvas.getContext('2d');
+  context.font = '48px Arial';
+  context.fillStyle = 'white';
+  context.textAlign = 'center';
+  context.fillText(text, canvas.width / 2, canvas.height / 2 + 16);
+  
+  const texture = new THREE.CanvasTexture(canvas);
+  const material = new THREE.SpriteMaterial({ map: texture });
+  const sprite = new THREE.Sprite(material);
+  
+  sprite.position.copy(position);
+  sprite.position.y += 1;
+  sprite.scale.multiplyScalar(scale);
+  
+  parent.add(sprite);
 }
