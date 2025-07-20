@@ -13,7 +13,7 @@ export function initExporter(data) {
   exportContainer.style.cssText = `
     position: fixed;
     top: 10px;
-    right: 10px;
+    right: 280px;
     z-index: 1000;
     display: flex;
     flex-direction: column;
