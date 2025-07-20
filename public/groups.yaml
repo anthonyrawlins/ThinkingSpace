@@ -1,0 +1,22 @@
+groups:
+  - id: "frontend"
+    label: "Frontend Layer"
+    bounds:
+      min: [-1, -1, -1]
+      max: [3, 2, 2]
+    color: "#3498db"
+    wireframe: true
+  - id: "backend"
+    label: "Service Layer"
+    bounds:
+      min: [4, -1, -1]
+      max: [8, 5, 2]
+    color: "#e74c3c"
+    wireframe: true
+  - id: "data"
+    label: "Data Layer"
+    bounds:
+      min: [9, -3, -1]
+      max: [13, 4, 3]
+    color: "#f39c12"
+    wireframe: true
