@@ -406,7 +406,45 @@ export function enableEditor(sceneData, data) {
     line.userData = { type: 'connection', data: newConnection };
     sceneData.connectionGroup.add(line);
     
+    // Add connection label with matching color
+    if (newConnection.label) {
+      addConnectionLabel(newConnection.label, midPoint, sceneData.connectionGroup, newConnection.color, 0.6);
+    }
+    
     console.log('Created connection:', newConnection.label);
+  }
+  
+  // Helper function for connection labels (duplicated from scene.js)
+  function addConnectionLabel(text, position, parent, color, scale = 1) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 256;
+    canvas.height = 64;
+    const context = canvas.getContext('2d');
+    
+    // Use connection color for text
+    context.font = 'bold 36px Arial';
+    context.fillStyle = color;
+    context.textAlign = 'center';
+    context.strokeStyle = 'rgba(0,0,0,0.8)';
+    context.lineWidth = 3;
+    
+    // Add text outline for better visibility
+    context.strokeText(text, canvas.width / 2, canvas.height / 2 + 12);
+    context.fillText(text, canvas.width / 2, canvas.height / 2 + 12);
+    
+    const texture = new THREE.CanvasTexture(canvas);
+    const material = new THREE.SpriteMaterial({ 
+      map: texture,
+      transparent: true
+    });
+    const sprite = new THREE.Sprite(material);
+    
+    // Position closer to the curve (reduce Y offset)
+    sprite.position.copy(position);
+    sprite.position.y += 0.3; // Much closer to the curve
+    sprite.scale.multiplyScalar(scale * 0.8); // Slightly smaller
+    
+    parent.add(sprite);
   }
   
   return {
